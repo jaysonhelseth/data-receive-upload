@@ -1,10 +1,10 @@
-import argparse
 import sys
 import asyncio
 import mysql.connector
 import uuid
 import time
 import json
+from dotenv import dotenv_values
 
 
 class ActionRunner:
@@ -40,18 +40,12 @@ class ActionRunner:
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--dev", type=str,
-                        help="The serial device to use.")
-    parser.add_argument("--db", type=str,
-                        help="The database connection string.")
-    args = parser.parse_args()
-
-    if args.dev is None or args.db is None:
-        parser.print_help()
+    config = dotenv_values(".env")
+    if config["DEV"] is None or config["DB"] is None:
+        print("Please setup your .env configuration.")
         sys.exit(1)
 
-    runner = ActionRunner(dev=args.dev, db=args.db)
+    runner = ActionRunner(dev=config["DEV"], db=config["DB"])
     runner.run()
 
 
