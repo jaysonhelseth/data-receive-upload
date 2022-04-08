@@ -2,40 +2,42 @@ import sys
 import asyncio
 import mysql.connector
 import uuid
-import time
 import json
 from dotenv import dotenv_values
+from digi.xbee.devices import XBeeDevice
 
 
 class ActionRunner:
     def __init__(self, dev, db):
-        self.dev = dev
+        self.device = XBeeDevice(port=dev, baud_rate=9600)
+        self.device.open()
+
         db_str = json.loads(db)
         self.connection = mysql.connector.connect(**db_str)
 
     def run(self):
-        print("Doing stuff")
-
         loop = asyncio.get_event_loop()
+
         try:
-            self.test_db()
+            self.device.add_data_received_callback(self.insert_data)
             loop.run_forever()
         finally:
             loop.close()
-            # close db and device here
             self.connection.close()
+            self.device.close()
 
-    def test_db(self):
-        add_record = ("insert into Sensors values (%s, %s, CURRENT_TIMESTAMP())")
+    def insert_data(self, xbee_message):
+        unique_id = str(uuid.uuid4())
+        msg = xbee_message.data.decode("utf8")
+
         cursor = self.connection.cursor()
 
-        while True:
-            data = (str(uuid.uuid4()), f'{{ "data": "{uuid.uuid4()}"}}')
-            print(data)
-            cursor.execute(add_record, data)
-            self.connection.commit()
-            time.sleep(1)
+        # create the statement and add the argument data.
+        add_record = ("insert into Sensors values (%s, %s, CURRENT_TIMESTAMP())")
+        data = (unique_id, msg)
 
+        cursor.execute(add_record, data)
+        self.connection.commit()
         cursor.close()
 
 
